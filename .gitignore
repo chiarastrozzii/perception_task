@@ -1,0 +1,22 @@
+# Ignore build folders
+/build/
+bin/
+out/
+
+# OS files
+.DS_Store
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# Compiled objects
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
