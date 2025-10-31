@@ -62,6 +62,28 @@ void maskTrackBar(Mat frame1, Mat frame_HSV){
     }
 }
 
+void drawLegend(Mat& frame) {
+    int width = 200;
+    int height = 100;
+    Rect legend(10, 10, width, height);
+
+    Mat overlay;
+    frame.copyTo(overlay);
+    rectangle(overlay, legend, Scalar(0, 0, 0), FILLED); 
+    addWeighted(overlay, 0.4, frame, 0.6, 0, frame); //0.4 of transparency
+
+    int startX = 20, startY = 30, boxSize = 15, gap = 25;
+
+    rectangle(frame, Point(startX, startY), Point(startX + boxSize, startY + boxSize), Scalar(255, 0, 0), FILLED);
+    putText(frame, "Blue cone", Point(startX + 25, startY + 12), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+
+    rectangle(frame, Point(startX, startY + gap), Point(startX + boxSize, startY + gap + boxSize), Scalar(0, 255, 255), FILLED);
+    putText(frame, "Yellow cone", Point(startX + 25, startY + gap + 12), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+
+    rectangle(frame, Point(startX, startY + 2 * gap), Point(startX + boxSize, startY + 2 * gap + boxSize), Scalar(0, 0, 255), FILLED);
+    putText(frame, "Red cone", Point(startX + 25, startY + 2 * gap + 12), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+}
+
 void redConesDetection(Mat frame1, Mat frame_HSV){
     //after having found correct range with trackbar, hardcode the values
     Scalar lower_red(109, 0, 175);
@@ -77,7 +99,7 @@ void redConesDetection(Mat frame1, Mat frame_HSV){
     morphologyEx(mask_red, mask_red, MORPH_DILATE, kernel);
 
     bitwise_and(frame1, frame1, result, mask_red); //result is a 3 channel color image
-    imshow("removing noise", result);
+    //imshow("removing noise", result);
 
 
     //detect the geometry using contours
@@ -86,9 +108,8 @@ void redConesDetection(Mat frame1, Mat frame_HSV){
 
     findContours(mask_red, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE); //expect a single channel image
 
-    drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
-    imshow("contours found", frame1);
-
+    //drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
+    //imshow("contours found", frame1);
 
     vector <vector <Point> > approx(contours.size()); //needed for the approximated polygon
 
@@ -109,7 +130,7 @@ void redConesDetection(Mat frame1, Mat frame_HSV){
         int vertices = (int)approx[j].size();
 
          if (vertices >= 3 && vertices <= 6) {
-            putText(frame1, "RED CONE", Point(box.x, box.y - 10),
+            putText(frame1, "RED CONE", Point(box.x, box.y - 10), //inferring the class!
                     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255), 2);
         } else {
             putText(frame1, "UNKNOWN", Point(box.x, box.y - 10),
@@ -118,20 +139,21 @@ void redConesDetection(Mat frame1, Mat frame_HSV){
 
     }
 
-    imshow("red cones", frame1);
+    //drawLegend(frame1);
+    //imshow("red cones", frame1);
 
 
-    char key = (char)waitKey(0);
+    /* char key = (char)waitKey(0); //need to uncomment in case of testing the single function
     if (key == 27){
         return;
-    }
+    } */
 }
 
 void blueConesDetection(Mat frame1, Mat frame_HSV){
-    Scalar lower_blue(77, 0, 112); //select a wider range to help detecting the further cones
-    Scalar upper_blue(125, 255, 192);
+    Scalar lower_blue(50, 0, 70); //select a wider range to help detecting the further cones
+    Scalar upper_blue(150, 255, 255);
 
-    Rect roi( 0, 150, 400, 200);
+    Rect roi( 0, 210, 400, 80);
     //rectangle(frame1, roi, Scalar(255, 0, 0), 2);
 
     Mat cropped_HSV = frame_HSV(roi); //crop the HSV so to compute the mask on the cropped part
@@ -139,13 +161,12 @@ void blueConesDetection(Mat frame1, Mat frame_HSV){
     Mat mask_blue, result_blue;
     inRange(cropped_HSV, lower_blue, upper_blue, mask_blue);
 
-    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(1,1));
+    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(2,2));
     morphologyEx(mask_blue, mask_blue, MORPH_OPEN, kernel);
-    //morphologyEx(mask_blue, mask_blue, MORPH_CLOSE, kernel);
+    morphologyEx(mask_blue, mask_blue, MORPH_CLOSE, kernel);
     morphologyEx(mask_blue, mask_blue, MORPH_DILATE, kernel);    
 
 
-    // 3. Find contours (candidate cones)
     vector<vector<Point>> contours;
     vector <Vec4i> hierarchy;
 
@@ -158,37 +179,39 @@ void blueConesDetection(Mat frame1, Mat frame_HSV){
         }
     }
 
-    drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
-    imshow("contours found", frame1);
+    //drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
+    //imshow("contours found", frame1);
 
     int imgHeight = frame1.rows;
+    vector <Rect> boxes;
 
     for (const auto& contour : contours) {
         double area = contourArea(contour);
         Rect box = boundingRect(contour);
+        boxes.push_back(box);
         double aspect = (double)box.height / (double)box.width;
 
         // Filter weird shapes
-        if (aspect < 0.5 || aspect > 4.0) continue;
-
+        if (aspect < 0.3 || aspect > 3.0) continue;
         rectangle(frame1, box, Scalar(255, 0, 0), 2);
     }
 
-    imshow("detected blue cones", frame1);
+    //drawLegend(frame1);
+    //imshow("detected blue cones", frame1);
 
 
-    char key = (char)waitKey(0);
+    /* char key = (char)waitKey(0);
     if (key == 27){
         return;
-    }
+    } */
 } 
 
 void yellowConesDetection(Mat frame1, Mat frame_HSV){
-    Scalar lower_yellow(10, 90, 165); //select a wider range to help detecting the further cones
-    Scalar upper_yellow(20, 255, 192);
+    Scalar lower_yellow(0, 90, 180); //select a wider range to help detecting the further cones
+    Scalar upper_yellow(40, 255, 255);
 
-    Rect roi( 100, 150, 400, 200);
-    rectangle(frame1, roi, Scalar(255, 0, 0), 2);
+    Rect roi( 0, 200, 600, 120);
+    //rectangle(frame1, roi, Scalar(0, 255, 255), 2);
 
     Mat cropped_HSV = frame_HSV(roi); //crop the HSV so to compute the mask on the cropped part
 
@@ -214,8 +237,8 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV){
         }
     }
 
-    drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
-    imshow("contours found", frame1);
+    //drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
+    //imshow("contours found", frame1);
 
     int imgHeight = frame1.rows;
 
@@ -225,18 +248,19 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV){
         double aspect = (double)box.height / (double)box.width;
 
         // Filter weird shapes
-        if (aspect < 0.5 || aspect > 4.0) continue;
+        if ( aspect > 4.0) continue;
 
-        rectangle(frame1, box, Scalar(255, 0, 255), 2);
+        rectangle(frame1, box, Scalar(0, 255, 255), 2);
     }
 
-    imshow("detected yellow cones", frame1);
+    //drawLegend(frame1);
+    //imshow("detected yellow cones", frame1);
 
 
-    char key = (char)waitKey(0);
+    /* char key = (char)waitKey(0);
     if (key == 27){
         return;
-    }
+    } */
 
 }
 
@@ -259,9 +283,13 @@ int main(){
     //maskTrackBar(frame1, frame_HSV);
 
     //function to detect the red cones
-    //redConesDetection(frame1, frame_HSV);
-    //blueConesDetection(frame1, frame_HSV);
+    redConesDetection(frame1, frame_HSV);
+    blueConesDetection(frame1, frame_HSV);
     yellowConesDetection(frame1, frame_HSV);
+
+    drawLegend(frame1);
+    
+    imshow("detection", frame1);
 
     char key = (char)waitKey(0);
     if (key == 27){
