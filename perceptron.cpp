@@ -84,7 +84,7 @@ void drawLegend(Mat& frame) {
     putText(frame, "Red cone", Point(startX + 25, startY + 2 * gap + 12), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
 }
 
-void redConesDetection(Mat frame1, Mat frame_HSV){
+void redConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& red_centers){
     //after having found correct range with trackbar, hardcode the values
     Scalar lower_red(109, 0, 175);
     Scalar upper_red(179, 255, 255);
@@ -125,7 +125,10 @@ void redConesDetection(Mat frame1, Mat frame_HSV){
 
         // bounding box which is used for labelling
         Rect box = boundingRect(approx[j]);
+        Point center(box.x + box.width/2, box.y + box.height/2);
+        red_centers.push_back(center);
         rectangle(frame1, box, Scalar(0, 0, 255), 2);
+        
 
         int vertices = (int)approx[j].size();
 
@@ -149,7 +152,7 @@ void redConesDetection(Mat frame1, Mat frame_HSV){
     } */
 }
 
-void blueConesDetection(Mat frame1, Mat frame_HSV){
+void blueConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& blue_centers){
     Scalar lower_blue(50, 0, 70); //select a wider range to help detecting the further cones
     Scalar upper_blue(150, 255, 255);
 
@@ -194,6 +197,9 @@ void blueConesDetection(Mat frame1, Mat frame_HSV){
         // Filter weird shapes
         if (aspect < 0.3 || aspect > 3.0) continue;
         rectangle(frame1, box, Scalar(255, 0, 0), 2);
+
+        Point center(box.x + box.width/2, box.y + box.height/2);
+        blue_centers.push_back(center);
     }
 
     //drawLegend(frame1);
@@ -206,11 +212,11 @@ void blueConesDetection(Mat frame1, Mat frame_HSV){
     } */
 } 
 
-void yellowConesDetection(Mat frame1, Mat frame_HSV){
-    Scalar lower_yellow(0, 90, 180); //select a wider range to help detecting the further cones
+void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_centers){
+    Scalar lower_yellow(0, 90, 190); //select a wider range to help detecting the further cones
     Scalar upper_yellow(40, 255, 255);
 
-    Rect roi( 0, 200, 600, 120);
+    Rect roi( 0, 200, 600, 110);
     //rectangle(frame1, roi, Scalar(0, 255, 255), 2);
 
     Mat cropped_HSV = frame_HSV(roi); //crop the HSV so to compute the mask on the cropped part
@@ -224,7 +230,7 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV){
     morphologyEx(mask_yellow, mask_yellow, MORPH_DILATE, kernel);    
 
 
-    // 3. Find contours (candidate cones)
+    // contours
     vector<vector<Point>> contours;
     vector <Vec4i> hierarchy;
 
@@ -247,10 +253,13 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV){
         Rect box = boundingRect(contour);
         double aspect = (double)box.height / (double)box.width;
 
-        // Filter weird shapes
-        if ( aspect > 4.0) continue;
+        Point center(box.x + box.width/2, box.y + box.height/2);
 
+        if (aspect < 0.5|| aspect > 3.5) continue;
         rectangle(frame1, box, Scalar(0, 255, 255), 2);
+
+      
+        yellow_centers.push_back(center);
     }
 
     //drawLegend(frame1);
@@ -264,8 +273,68 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV){
 
 }
 
+void drawBlueEdge(Mat frame1, vector<Point>& blue_centers ){
+    vector<Point> sorted_cones = blue_centers;
+    sort(sorted_cones.begin(), sorted_cones.end(), [](const Point&a, const Point& b){
+        return a.x < b.x;
+    });
+
+    size_t mid_index = sorted_cones.size() / 2;
+    vector<Point> leftCones(sorted_cones.begin(), sorted_cones.begin() + mid_index - 2);
+    vector<Point> rightCones(sorted_cones.begin() + mid_index -2, sorted_cones.end());
+
+    for (size_t i=1; i<leftCones.size(); ++i){
+        line(frame1, leftCones[i-1], leftCones[i], Scalar(255,0,0), 2, LINE_AA);
+    }
+
+    vector <Point> sorted_right = rightCones;
+    sort(sorted_right.begin(), sorted_right.end(), [] (const Point& a, const Point& b ){
+        return a.y< b.y;
+    });
+
+    for (size_t i=1; i<sorted_right.size(); ++i){
+        line(frame1, sorted_right[i-1], sorted_right[i], Scalar(255, 0, 0), 2, LINE_AA);
+    }
+
+    line(frame1, leftCones.back(), sorted_right.front(), Scalar(255, 0, 0), 2, LINE_AA);
+}
+
+void drawYellowEdge(Mat frame1, vector<Point>& yellow_centers ){
+    vector<Point> sorted_cones = yellow_centers;
+    sort(sorted_cones.begin(), sorted_cones.end(), [](const Point&a, const Point& b){
+        return a.x < b.x;
+    });
+
+    for(size_t i = 1; i<sorted_cones.size(); ++i){
+        line(frame1, sorted_cones[i-1], sorted_cones[i], Scalar(255,255,0), 2, LINE_AA );
+    }
+
+    /* size_t mid_index = sorted_cones.size() / 2;
+    vector<Point> leftCones(sorted_cones.begin(), sorted_cones.begin() + mid_index);
+    vector<Point> rightCones(sorted_cones.begin() + mid_index, sorted_cones.end());
+ */
+   
+}
+
+void drawRedLine(Mat frame1, vector<Point>& red_centers){
+    for(size_t i=1; i<red_centers.size(); ++i){
+        line(frame1, red_centers[i-1], red_centers[i], Scalar(0, 0, 255), 2, LINE_AA);
+    }
+
+     Point p1 = red_centers.front();
+    Point p2 = red_centers.back();
+    Point mid((p1.x + p2.x) / 2, (p1.y + p2.y) / 2); //middle point of the line
+
+    string text = "START";
+    int baseline = 0;
+    Size textSize = getTextSize(text, FONT_HERSHEY_SIMPLEX, 0.7, 2, &baseline); //measuring the size of the text to know where to position it
+
+    Point textOrg(mid.x - textSize.width / 2, mid.y + textSize.height - 20); //position the text slightly below the line
+
+    putText(frame1, text, textOrg, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 0, 255), 2, LINE_AA);
+}
+
 int main(){
-    //level 1: load and display the image
     string path_image1 = "../images/frame_1.png";
     Mat frame1 = imread(path_image1); //matrix from opencv library where we store the image, read from the path given 
 
@@ -282,14 +351,37 @@ int main(){
     //to create a trackbar to find the useful values for creating the different masks
     //maskTrackBar(frame1, frame_HSV);
 
-    //function to detect the red cones
-    redConesDetection(frame1, frame_HSV);
-    blueConesDetection(frame1, frame_HSV);
-    yellowConesDetection(frame1, frame_HSV);
+    //to find center points of the cones, used for track trace
+    vector <Point> blue_centers;
+    vector <Point> yellow_centers;
+    vector <Point> red_centers;
 
+
+    //function to detect the red cones
+    redConesDetection(frame1, frame_HSV, red_centers);
+    //blue
+    blueConesDetection(frame1, frame_HSV, blue_centers);
+    //yellow
+    yellowConesDetection(frame1, frame_HSV, yellow_centers);
+
+    //draws a legend on top left corner for classification
     drawLegend(frame1);
     
     imshow("detection", frame1);
+
+
+    //LEVEL 4
+    //left edge of the track are the blue cones (find the center of the cones so that you can then use it to draw the lines)
+    //right edge of track the yellow cones
+    //start given by the red cones
+
+    //to draw lines fitLine from the opencv lib
+
+    //drawBlueEdge(frame1, blue_centers);
+    //drawYellowEdge(frame1, yellow_centers);
+    drawRedLine(frame1, red_centers);
+    imshow("race track edges", frame1 );
+
 
     char key = (char)waitKey(0);
     if (key == 27){
