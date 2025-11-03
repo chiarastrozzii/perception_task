@@ -1,4 +1,6 @@
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/features2d.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
@@ -216,8 +218,8 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_cente
     Scalar lower_yellow(0, 90, 190); //select a wider range to help detecting the further cones
     Scalar upper_yellow(40, 255, 255);
 
-    Rect roi( 0, 200, 600, 110);
-    //rectangle(frame1, roi, Scalar(0, 255, 255), 2);
+    Rect roi( 0, 200, 600, 100);
+    rectangle(frame1, roi, Scalar(0, 255, 255), 2);
 
     Mat cropped_HSV = frame_HSV(roi); //crop the HSV so to compute the mask on the cropped part
 
@@ -370,17 +372,95 @@ int main(){
     imshow("detection", frame1);
 
 
-    //LEVEL 4
-    //left edge of the track are the blue cones (find the center of the cones so that you can then use it to draw the lines)
-    //right edge of track the yellow cones
-    //start given by the red cones
-
-    //to draw lines fitLine from the opencv lib
-
-    //drawBlueEdge(frame1, blue_centers);
+    //---- LEVEL 4 -----
+    drawBlueEdge(frame1, blue_centers);
     //drawYellowEdge(frame1, yellow_centers);
     drawRedLine(frame1, red_centers);
-    imshow("race track edges", frame1 );
+    //imshow("race track edges", frame1 );
+
+
+    //---- LEVEL 5 ----
+
+    Mat first_frame = imread("../images/frame_1.png");
+    Mat second_frame= imread("../images/frame_2.png");
+    //imshow("first frame", first_frame);
+    //imshow("second frame", second_frame);
+
+    //create a binary mask to hide the car
+
+    Mat mask_car1 = Mat::ones(first_frame.size(), CV_8UC1) * 255; // initially create a mask full of 1s (white), 8 bit unsigned since we're looking at an area of interest (greyscale)
+    Rect middle_rect(190, 320, 280, 300);
+    Rect left_tire1(30, 390, 160, 100);
+    Rect right_tire1(470, 390, 160, 100);
+
+    rectangle(mask_car1, middle_rect, Scalar(0), FILLED);
+    rectangle(mask_car1, left_tire1, Scalar(0), FILLED);
+    rectangle(mask_car1, right_tire1, Scalar(0), FILLED);
+
+    Mat mask_car2 = Mat::ones(second_frame.size(), CV_8UC1) * 255;
+    Rect left_tire2(30, 410, 160, 80);
+    Rect right_tire2(470, 430, 160, 70);
+
+    rectangle(mask_car2, middle_rect, Scalar(0), FILLED);
+    rectangle(mask_car2, left_tire2, Scalar(0), FILLED);
+    rectangle(mask_car2, right_tire2, Scalar(0), FILLED);
+
+    Mat masked_frame1, masked_frame2;
+    first_frame.copyTo(masked_frame1, mask_car1);
+    second_frame.copyTo(masked_frame2, mask_car2);
+    //imshow("masked car 1", masked_frame1);
+    //imshow("masked car 2", masked_frame2);
+
+
+    //FIND FEATURES AND DESCRIPTORS
+    Ptr<ORB> orb = ORB::create();
+    vector<KeyPoint> keypoints1, keypoints2;
+    Mat descriptor1, descriptor2; //local neighbours of each keypoint
+
+    orb-> detectAndCompute(first_frame, mask_car1, keypoints1, descriptor1); //returns a vector of keypoints and a matrix
+    orb-> detectAndCompute(second_frame, mask_car2, keypoints2, descriptor2);
+
+
+    //MATCH THE FEATURES
+    BFMatcher matcher(NORM_HAMMING); //using hamming distance to check
+    vector <DMatch> matches;
+    matcher.match(descriptor1, descriptor2, matches); //single best matches based on the smallest distance
+
+    //extract the 2d points
+    vector<Point2f> pt1, pt2; //points in image 1 with corresponding points (in second vector) in the second image
+    for(auto &m: matches){
+        pt1.push_back(keypoints1[m.queryIdx].pt); //.pt stores the x and y coordinates of the points
+        pt2.push_back(keypoints2[m.trainIdx].pt);
+    }
+
+    //intrinsic matrix
+    cv::Mat K = (cv::Mat_<double>(3, 3) << 
+        387.3502807617188, 0,                   317.7719116210938,
+        0,                 387.3502807617188,   242.4875946044922,
+        0,                 0,                   1);   
+    
+    
+    //compute the Essential Matrix
+    Mat inLinerMask;
+    Mat E = findEssentialMat(pt1, pt2, K, RANSAC, 0.999, 1.0, inLinerMask); //the mask is an output, it tells how many matches were consistent
+
+    //how camera actually moved
+    Mat R, t;
+    recoverPose(E, pt1, pt2, K, R, t, inLinerMask);
+
+    // Draw inlier matches
+    vector<DMatch> inlierMatches;
+    for (size_t i = 0; i < matches.size(); i++) {
+        if (inLinerMask.at<uchar>(i)) {
+            inlierMatches.push_back(matches[i]);
+        }
+    }
+
+    Mat imgMatches;
+    drawMatches(first_frame, keypoints1, second_frame, keypoints2, inlierMatches, imgMatches,
+                Scalar(255, 255, 0), Scalar(255, 0, 0), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+
+    //imshow("matches", imgMatches);
 
 
     char key = (char)waitKey(0);
