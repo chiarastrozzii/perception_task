@@ -54,7 +54,7 @@ void maskTrackBar(Mat frame1, Mat frame_HSV){
 
         //imshow("racetrack 1", frame1);
         //imshow("racetrack HSV", frame_HSV);
-        imshow("mask", trial_mask);
+        //imshow("mask", trial_mask);
         imshow("mask applied", result_mask);
         //waitKey(1);
 
@@ -218,37 +218,62 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_cente
     Scalar lower_yellow(0, 90, 190); //select a wider range to help detecting the further cones
     Scalar upper_yellow(40, 255, 255);
 
+    Scalar lower_yellow2(0, 90, 174);
+    Scalar upper_yellow2(90, 255, 255);
+
     Rect roi( 0, 200, 600, 100);
-    rectangle(frame1, roi, Scalar(0, 255, 255), 2);
+    //rectangle(frame1, roi, Scalar(0, 255, 255), 2);
 
-    Mat cropped_HSV = frame_HSV(roi); //crop the HSV so to compute the mask on the cropped part
+    //create 2 rectangle region for 2 separate masks, so that i can use different kernels
+    Rect further_cones(0, 200, 390, 40);
+    //rectangle(frame1, further_cones, Scalar(0, 255, 255), 2);
+    Rect right_cones(390, 200, 100, 100);
+    //rectangle(frame1, right_cones, Scalar(0, 255, 255), 2);
 
-    Mat mask_yellow, result_yellow;
-    inRange(cropped_HSV, lower_yellow, upper_yellow, mask_yellow);
 
-    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(1,1));
-    morphologyEx(mask_yellow, mask_yellow, MORPH_OPEN, kernel);
-    morphologyEx(mask_yellow, mask_yellow, MORPH_CLOSE, kernel);
-    morphologyEx(mask_yellow, mask_yellow, MORPH_DILATE, kernel);    
+    Mat cropped_HSV1 = frame_HSV(further_cones); //crop the HSV so to compute the mask on the cropped part
+    Mat cropped_HSV2 = frame_HSV(right_cones);
+
+    Mat further_mask, right_mask;
+
+    inRange(cropped_HSV1, lower_yellow, upper_yellow, further_mask);
+    Mat kernel1 = getStructuringElement(MORPH_ELLIPSE, Size(1,1));
+    morphologyEx(further_mask, further_mask, MORPH_OPEN, kernel1);
+    morphologyEx(further_mask, further_mask, MORPH_CLOSE, kernel1);
+    morphologyEx(further_mask, further_mask, MORPH_DILATE, kernel1);    
+
+    inRange(cropped_HSV2, lower_yellow2, upper_yellow2, right_mask);
+    Mat kernel2 = getStructuringElement(MORPH_ELLIPSE, Size(6,6));
+    morphologyEx(right_mask, right_mask, MORPH_CLOSE, kernel2);
+    morphologyEx(right_mask, right_mask, MORPH_OPEN, kernel2);
+    morphologyEx(right_mask, right_mask, MORPH_DILATE, kernel2);  
 
 
     // contours
-    vector<vector<Point>> contours;
-    vector <Vec4i> hierarchy;
+    vector<vector<Point>> further_contours, right_contours;
+    vector <Vec4i> hierarchy1, hierarchy2;
 
-    findContours(mask_yellow, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    findContours(further_mask, further_contours, hierarchy1, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    findContours(right_mask, right_contours, hierarchy2, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-    for (auto& contour : contours) { //offset the counters so that they're on the right position
+    for (auto& contour : further_contours) { //offset the counters so that they're on the right position
         for (auto& point : contour) {
-            point.x += roi.x;
-            point.y += roi.y;
+            point.x += further_cones.x;
+            point.y += further_cones.y;
         }
     }
 
-    //drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
-    //imshow("contours found", frame1);
+    for (auto& contour : right_contours) {
+        for (auto& point : contour) {
+            point.x += right_cones.x;
+            point.y += right_cones.y;
+        }
+    }
 
-    int imgHeight = frame1.rows;
+    //merge contours together
+    vector<vector<Point>> contours;
+    contours.insert(contours.end(), further_contours.begin(), further_contours.end());
+    contours.insert(contours.end(), right_contours.begin(), right_contours.end());
 
     for (const auto& contour : contours) {
         double area = contourArea(contour);
@@ -257,10 +282,8 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_cente
 
         Point center(box.x + box.width/2, box.y + box.height/2);
 
-        if (aspect < 0.5|| aspect > 3.5) continue;
+        if (aspect < 0.3|| aspect > 4) continue;
         rectangle(frame1, box, Scalar(0, 255, 255), 2);
-
-      
         yellow_centers.push_back(center);
     }
 
@@ -308,13 +331,8 @@ void drawYellowEdge(Mat frame1, vector<Point>& yellow_centers ){
     });
 
     for(size_t i = 1; i<sorted_cones.size(); ++i){
-        line(frame1, sorted_cones[i-1], sorted_cones[i], Scalar(255,255,0), 2, LINE_AA );
+        line(frame1, sorted_cones[i-1], sorted_cones[i], Scalar(0,255,255), 2, LINE_AA );
     }
-
-    /* size_t mid_index = sorted_cones.size() / 2;
-    vector<Point> leftCones(sorted_cones.begin(), sorted_cones.begin() + mid_index);
-    vector<Point> rightCones(sorted_cones.begin() + mid_index, sorted_cones.end());
- */
    
 }
 
@@ -335,6 +353,36 @@ void drawRedLine(Mat frame1, vector<Point>& red_centers){
 
     putText(frame1, text, textOrg, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 0, 255), 2, LINE_AA);
 }
+
+
+//---- LEVEL 5 functions -----
+Mat create_mask1(Mat first_frame){
+    Mat mask_car1 = Mat::ones(first_frame.size(), CV_8UC1) * 255; // initially create a mask full of 1s (white), 8 bit unsigned since we're looking at an area of interest (greyscale)
+    Rect middle_rect(190, 320, 280, 300);
+    Rect left_tire1(30, 390, 160, 100);
+    Rect right_tire1(470, 390, 160, 100);
+
+    rectangle(mask_car1, middle_rect, Scalar(0), FILLED);
+    rectangle(mask_car1, left_tire1, Scalar(0), FILLED);
+    rectangle(mask_car1, right_tire1, Scalar(0), FILLED);
+
+    return mask_car1;
+}
+
+Mat create_mask2(Mat second_frame){
+    Mat mask_car2 = Mat::ones(second_frame.size(), CV_8UC1) * 255;
+    Rect middle_rect(190, 320, 280, 300);
+    Rect left_tire2(30, 410, 160, 80);
+    Rect right_tire2(470, 430, 160, 70);
+
+    rectangle(mask_car2, middle_rect, Scalar(0), FILLED);
+    rectangle(mask_car2, left_tire2, Scalar(0), FILLED);
+    rectangle(mask_car2, right_tire2, Scalar(0), FILLED);
+
+    return mask_car2;
+}
+
+
 
 int main(){
     string path_image1 = "../images/frame_1.png";
@@ -374,36 +422,19 @@ int main(){
 
     //---- LEVEL 4 -----
     drawBlueEdge(frame1, blue_centers);
-    //drawYellowEdge(frame1, yellow_centers);
+    drawYellowEdge(frame1, yellow_centers);
     drawRedLine(frame1, red_centers);
-    //imshow("race track edges", frame1 );
+    imshow("race track edges", frame1 );
 
 
     //---- LEVEL 5 ----
 
     Mat first_frame = imread("../images/frame_1.png");
     Mat second_frame= imread("../images/frame_2.png");
-    //imshow("first frame", first_frame);
-    //imshow("second frame", second_frame);
 
-    //create a binary mask to hide the car
-
-    Mat mask_car1 = Mat::ones(first_frame.size(), CV_8UC1) * 255; // initially create a mask full of 1s (white), 8 bit unsigned since we're looking at an area of interest (greyscale)
-    Rect middle_rect(190, 320, 280, 300);
-    Rect left_tire1(30, 390, 160, 100);
-    Rect right_tire1(470, 390, 160, 100);
-
-    rectangle(mask_car1, middle_rect, Scalar(0), FILLED);
-    rectangle(mask_car1, left_tire1, Scalar(0), FILLED);
-    rectangle(mask_car1, right_tire1, Scalar(0), FILLED);
-
-    Mat mask_car2 = Mat::ones(second_frame.size(), CV_8UC1) * 255;
-    Rect left_tire2(30, 410, 160, 80);
-    Rect right_tire2(470, 430, 160, 70);
-
-    rectangle(mask_car2, middle_rect, Scalar(0), FILLED);
-    rectangle(mask_car2, left_tire2, Scalar(0), FILLED);
-    rectangle(mask_car2, right_tire2, Scalar(0), FILLED);
+    //create a binary mask to hide the car for both frames
+    Mat mask_car1 = create_mask1(first_frame);
+    Mat mask_car2 = create_mask2(second_frame);
 
     Mat masked_frame1, masked_frame2;
     first_frame.copyTo(masked_frame1, mask_car1);
@@ -412,7 +443,7 @@ int main(){
     //imshow("masked car 2", masked_frame2);
 
 
-    //FIND FEATURES AND DESCRIPTORS
+    //find the features and their descriptors
     Ptr<ORB> orb = ORB::create();
     vector<KeyPoint> keypoints1, keypoints2;
     Mat descriptor1, descriptor2; //local neighbours of each keypoint
@@ -421,8 +452,8 @@ int main(){
     orb-> detectAndCompute(second_frame, mask_car2, keypoints2, descriptor2);
 
 
-    //MATCH THE FEATURES
-    BFMatcher matcher(NORM_HAMMING); //using hamming distance to check
+    //match the features
+    BFMatcher matcher(NORM_HAMMING, true); //using hamming distance to check, true means that all the matches found are symmetric, more reliable
     vector <DMatch> matches;
     matcher.match(descriptor1, descriptor2, matches); //single best matches based on the smallest distance
 
@@ -441,26 +472,30 @@ int main(){
     
     
     //compute the Essential Matrix
-    Mat inLinerMask;
-    Mat E = findEssentialMat(pt1, pt2, K, RANSAC, 0.999, 1.0, inLinerMask); //the mask is an output, it tells how many matches were consistent
+    Mat inLierMask;
+    Mat E = findEssentialMat(pt1, pt2, K, RANSAC, 0.999, 1.0, inLierMask); //the mask is an output, it tells how many matches were consistent
 
-    //how camera actually moved
+    //how the camera actually moved (rotation matrix and translation vector)
     Mat R, t;
-    recoverPose(E, pt1, pt2, K, R, t, inLinerMask);
+    recoverPose(E, pt1, pt2, K, R, t, inLierMask);
+
+    //testing prints to see if the rotational matrix and the translation vector have plausible values
+    //cout << "R" << R << endl;
+    //cout << "t: " << t << endl;
 
     // Draw inlier matches
-    vector<DMatch> inlierMatches;
+    vector<DMatch> inLierMatches;
     for (size_t i = 0; i < matches.size(); i++) {
-        if (inLinerMask.at<uchar>(i)) {
-            inlierMatches.push_back(matches[i]);
+        if (inLierMask.at<uchar>(i)) {
+            inLierMatches.push_back(matches[i]);
         }
     }
 
     Mat imgMatches;
-    drawMatches(first_frame, keypoints1, second_frame, keypoints2, inlierMatches, imgMatches,
-                Scalar(255, 255, 0), Scalar(255, 0, 0), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+    drawMatches(first_frame, keypoints1, second_frame, keypoints2, inLierMatches, imgMatches,
+                Scalar(255, 0, 0), Scalar(255, 255, 0), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-    //imshow("matches", imgMatches);
+    imshow("matches", imgMatches);
 
 
     char key = (char)waitKey(0);
