@@ -97,15 +97,6 @@ void redConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& red_cent
         }
 
     }
-
-    //drawLegend(first_frame);
-    //imshow("red cones", first_frame);
-
-
-    /* char key = (char)waitKey(0); //need to uncomment in case of testing the single function
-    if (key == 27){
-        return;
-    } */
 }
 
 void blueConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& blue_centers){
@@ -157,15 +148,6 @@ void blueConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& blue_ce
         Point center(box.x + box.width/2, box.y + box.height/2);
         blue_centers.push_back(center);
     }
-
-    //drawLegend(first_frame);
-    //imshow("detected blue cones", first_frame);
-
-
-    /* char key = (char)waitKey(0);
-    if (key == 27){
-        return;
-    } */
 } 
 
 void yellowConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& yellow_centers){
@@ -240,15 +222,6 @@ void yellowConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& yello
         rectangle(first_frame, box, Scalar(0, 255, 255), 2);
         yellow_centers.push_back(center);
     }
-
-    //drawLegend(first_frame);
-    //imshow("detected yellow cones", first_frame);
-
-
-    /* char key = (char)waitKey(0);
-    if (key == 27){
-        return;
-    } */
 
 }
 
@@ -412,6 +385,7 @@ Mat odometry(Mat &first_frame, Mat& second_frame){
 void menu(Mat &first_frame){
     vector<string> lines = {
         "CONTROLS",
+        "[s] show frames",
         "[d] cones detection",
         "[e] racetrack edges",
         "[o] odometry",
@@ -503,10 +477,19 @@ int main(){
     bool show_edges = false;
     bool show_odometry = false;
     bool show_trackbar = false;
+    bool show_frames = false;
     bool show_menu = true;
 
     while (true){
         Mat display = first_frame.clone();
+
+        if (show_frames){
+            imshow("frame1", display);
+            imshow("frame2", second_frame);
+        }else{
+            destroyWindow("frame1");
+            destroyWindow("frame2");
+        }
 
         if (show_detection){
             //function to detect the red cones
@@ -567,6 +550,9 @@ int main(){
         if (key == 27) break;
 
         switch (key){
+            case 's':
+                show_frames = !show_frames;
+                show_menu = !show_menu;
             case 'd':
                 show_detection = !show_detection;
                 show_menu = !show_menu; //when detection is off show the main menu
@@ -588,6 +574,7 @@ int main(){
                 show_edges = false;
                 show_odometry = false;
                 show_trackbar = false;
+                show_frames = false;
                 red_centers.clear();
                 blue_centers.clear();
                 yellow_centers.clear();
