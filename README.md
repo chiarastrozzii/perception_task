@@ -24,11 +24,22 @@ This project simulates a **perception pipeline** for a Formula Student Driverles
 
 ### **Building**
 ```bash
-git clone <your-repo-url>
-cd perception_project
+# Clone the repository
+git clone https://github.com/chiarastrozzii/perception_task.git
+
+# Move into the project folder
+cd perception_task
+
+# Create and enter the build directory
 mkdir build && cd build
+
+# Generate the build files with CMake
 cmake ..
+
+# Compile the project
 make
+
+# Run the executable
 ./PerceptionTask
 ```
 
@@ -53,13 +64,15 @@ Use the following keyboard controls to toggle different modes, press once to act
 
 | Key | Mode | Description |
 |-----|------|--------------|
-| **s** |  *Load Data* | Loads and shows both frames given |
+| **s** |  *Load Data* | Loads and shows both frames given. |
 | **d** |  *Cone Detection* | Detects and labels red, blue, and yellow cones on the track, using the first frame. |
 | **e** |  *Edge Visualization* | Shows track edges and the start line. |
 | **o** |  *Odometry* | Estimates and displays motion between the 2 frames using ORB features. |
 | **t** |  *Trackbar Mode* | Opens an HSV trackbar window for dynamic tuning of color thresholds. |
 | **r** |  *Reset* | Resets all modes. |
-| **ESC** |  *Exit* | Closes all windows |
+| **ESC** |  *Exit* | Closes all windows. |
+
+It's important to run the cone detection before the edge visualization, since the latter is based on the former.
 
 ---
 
