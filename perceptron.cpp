@@ -18,52 +18,6 @@ int lower, upper; //used in the trackbar
 
 void onTrackbarChange(int , void*){} //updated globally
 
-void maskTrackBar(Mat& first_frame, Mat& frame_HSV){
-    //to find the correct range of values for the mask use of a track bar:
-    namedWindow("TrackBars", WINDOW_AUTOSIZE);
-    
-    createTrackbar("Hue Min", "TrackBars", &hmin, 179, onTrackbarChange); //179 is the max value of the hue value
-    createTrackbar("Hue Max", "TrackBars", &hmax, 179, onTrackbarChange);
-    createTrackbar("Sat Min", "TrackBars", &smin, 255, onTrackbarChange);
-    createTrackbar("Sat Max", "TrackBars", &smax, 255, onTrackbarChange);
-    createTrackbar("Val Min", "TrackBars", &vmin, 255, onTrackbarChange);
-    createTrackbar("Val Max", "TrackBars", &vmax, 255, onTrackbarChange);
-
-    setTrackbarPos("Hue max", "TrackBars", 179);
-    setTrackbarPos("Sat max", "TrackBars", 255);
-    setTrackbarPos("Val max", "TrackBars", 255);
-
-    while(true){
-        //to detect cones using computer vision [test]
-        Mat trial_mask, result_mask;
-
-        hmin = getTrackbarPos("Hue Min", "TrackBars");
-        hmax = getTrackbarPos("Hue Max", "TrackBars");
-        smin = getTrackbarPos("Satu Min", "TrackBars");
-        smax = getTrackbarPos("Sat Max", "TrackBars");
-        vmin = getTrackbarPos("Val Min", "TrackBars");
-        vmax = getTrackbarPos("Val Max", "TrackBars");
-
-
-        Scalar lower(hmin, smin, vmin);
-        Scalar upper(hmax, smax, vmax);
-        inRange(frame_HSV, lower, upper, trial_mask);
-
-        bitwise_and(first_frame, first_frame, result_mask, trial_mask);
-
-
-        //imshow("racetrack 1", first_frame);
-        //imshow("racetrack HSV", frame_HSV);
-        //imshow("mask", trial_mask);
-        imshow("mask applied", result_mask);
-        //waitKey(1);
-
-        char key = (char)waitKey(30); //image update every 30ms, when esc is pressed it stops
-        if (key == 27) break;
-        
-    }
-}
-
 void drawLegend(Mat& frame) {
     int width = 200;
     int height = 100;
@@ -166,7 +120,7 @@ void blueConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& blue_ce
     Mat mask_blue, result_blue;
     inRange(cropped_HSV, lower_blue, upper_blue, mask_blue);
 
-    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(2,2));
+    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(3,3));
     morphologyEx(mask_blue, mask_blue, MORPH_OPEN, kernel);
     morphologyEx(mask_blue, mask_blue, MORPH_CLOSE, kernel);
     morphologyEx(mask_blue, mask_blue, MORPH_DILATE, kernel);    
@@ -304,9 +258,15 @@ void drawBlueEdge(Mat& first_frame, vector<Point>& blue_centers ){
         return a.x < b.x;
     });
 
-    size_t mid_index = sorted_cones.size() / 2;
-    vector<Point> leftCones(sorted_cones.begin(), sorted_cones.begin() + mid_index - 2);
-    vector<Point> rightCones(sorted_cones.begin() + mid_index -2, sorted_cones.end());
+    float mean_x = 0;
+    for (auto& p : sorted_cones) mean_x += p.x;
+        mean_x /= sorted_cones.size();
+
+    vector<Point> leftCones, rightCones;
+    for (auto& p : sorted_cones) {
+        if (p.x < mean_x) leftCones.push_back(p);
+        else rightCones.push_back(p);
+    }
 
     for (size_t i=1; i<leftCones.size(); ++i){
         line(first_frame, leftCones[i-1], leftCones[i], Scalar(255,0,0), 2, LINE_AA);
@@ -382,7 +342,7 @@ Mat create_mask2(Mat& second_frame){
     return mask_car2;
 }
 
-void odometry(Mat &first_frame, Mat& second_frame){
+Mat odometry(Mat &first_frame, Mat& second_frame){
     //create a binary mask to hide the car for both frames
     Mat mask_car1 = create_mask1(first_frame);
     Mat mask_car2 = create_mask2(second_frame);
@@ -446,7 +406,24 @@ void odometry(Mat &first_frame, Mat& second_frame){
     drawMatches(first_frame, keypoints1, second_frame, keypoints2, inLierMatches, imgMatches,
                 Scalar(255, 0, 0), Scalar(255, 255, 0), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-    imshow("matches", imgMatches);
+    return imgMatches;
+}
+
+void menu(Mat &first_frame){
+   putText(first_frame, "CONTROLS", Point(20, 40),
+            FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 0), 2);
+    putText(first_frame, "[d] cones detection", Point(20, 80),
+            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
+    putText(first_frame, "[e] racetrack edges", Point(20, 110),
+            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
+    putText(first_frame, "[o] odometry", Point(20, 140),
+            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
+    putText(first_frame, "[t] mask trackbar", Point(20, 170),
+            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
+    putText(first_frame, "[r] reset", Point(20, 200),
+            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
+    putText(first_frame, "[ESC] exit", Point(20, 230),
+            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(0, 0, 255), 1);
 }
 
 
@@ -455,7 +432,7 @@ int main(){
     Mat first_frame = imread("../images/frame_1.png");
     Mat second_frame= imread("../images/frame_2.png");
 
-    Mat display = first_frame.clone();
+    Mat frame_odometry = first_frame.clone();
 
     if (first_frame.empty()){
         return -1;
@@ -473,36 +450,118 @@ int main(){
     vector <Point> yellow_centers;
     vector <Point> red_centers;
 
-
-    //function to detect the red cones
-    redConesDetection(first_frame, frame_HSV, red_centers);
-    //blue
-    blueConesDetection(first_frame, frame_HSV, blue_centers);
-    //yellow
-    yellowConesDetection(first_frame, frame_HSV, yellow_centers);
-
-    //draws a legend on top left corner for classification
-    drawLegend(first_frame);
+    namedWindow("TrackBars", WINDOW_AUTOSIZE);
     
-    imshow("detection", first_frame);
+    createTrackbar("Hue Min", "TrackBars", &hmin, 179, onTrackbarChange); //179 is the max value of the hue value
+    createTrackbar("Hue Max", "TrackBars", &hmax, 179, onTrackbarChange);
+    createTrackbar("Sat Min", "TrackBars", &smin, 255, onTrackbarChange);
+    createTrackbar("Sat Max", "TrackBars", &smax, 255, onTrackbarChange);
+    createTrackbar("Val Min", "TrackBars", &vmin, 255, onTrackbarChange);
+    createTrackbar("Val Max", "TrackBars", &vmax, 255, onTrackbarChange);
 
+    setTrackbarPos("Hue max", "TrackBars", 179);
+    setTrackbarPos("Sat max", "TrackBars", 255);
+    setTrackbarPos("Val max", "TrackBars", 255);
 
-    //---- LEVEL 4 -----
-    drawBlueEdge(first_frame, blue_centers);
-    drawYellowEdge(first_frame, yellow_centers);
-    drawRedLine(first_frame, red_centers);
-    imshow("race track edges", first_frame );
+    Mat odometry_result;
 
+    bool show_detection = false;
+    bool show_edges = false;
+    bool show_odometry = false;
+    bool show_trackbar = false;
+    bool show_menu = true;
 
-    //---- LEVEL 5 ----
-    odometry(display, second_frame);
+    while (true){
+        Mat display = first_frame.clone();
 
+        if (show_detection){
+            //function to detect the red cones
+            redConesDetection(display, frame_HSV, red_centers);
+            //blue
+            blueConesDetection(display, frame_HSV, blue_centers);
+            //yellow
+            yellowConesDetection(display, frame_HSV, yellow_centers);
 
-    char key = (char)waitKey(0);
-    if (key == 27){
-        return 0;
+            //draws a legend on top left corner for classification
+            drawLegend(display);
+        }
+
+        if (show_edges){
+            drawBlueEdge(display, blue_centers);
+            drawYellowEdge(display, yellow_centers);
+            drawRedLine(display, red_centers);
+        }
+
+        if (show_odometry){
+            if (odometry_result.empty()){
+                odometry_result = odometry(display, second_frame);
+            }
+            imshow("matches", odometry_result);
+        }else{
+            destroyWindow("matches");
+            odometry_result.release();
+        }
+
+        if (show_trackbar){
+            Mat trial_mask, result_mask;
+
+            hmin = getTrackbarPos("Hue Min", "TrackBars");
+            hmax = getTrackbarPos("Hue Max", "TrackBars");
+            smin = getTrackbarPos("Satu Min", "TrackBars");
+            smax = getTrackbarPos("Sat Max", "TrackBars");
+            vmin = getTrackbarPos("Val Min", "TrackBars");
+            vmax = getTrackbarPos("Val Max", "TrackBars");
+
+            Scalar lower(hmin, smin, vmin);
+            Scalar upper(hmax, smax, vmax);
+            inRange(frame_HSV, lower, upper, trial_mask);
+
+            bitwise_and(first_frame, first_frame, result_mask, trial_mask);
+
+            imshow("mask applied", result_mask);
+        }else{
+            destroyWindow("mask applied");
+        }
+
+        if (show_menu){
+            menu(display);
+        }
+
+        imshow("Perception Task", display);
+
+        char key = (char)waitKey(30);
+        if (key == 27) break;
+
+        switch (key){
+            case 'd':
+                show_detection = !show_detection;
+                show_menu = !show_menu; //when detection is off show the main menu
+                break;
+            case 'e':
+                show_edges = !show_edges;
+                show_menu = !show_menu;
+                break;
+            case 'o':
+                show_odometry = !show_odometry;
+                show_menu = !show_menu;
+                break;
+            case 't':
+                show_trackbar = !show_trackbar;
+                show_menu = !show_menu;
+                break;
+            case 'r':
+                show_detection = false;
+                show_edges = false;
+                show_odometry = false;
+                show_trackbar = false;
+                red_centers.clear();
+                blue_centers.clear();
+                yellow_centers.clear();
+                show_menu = true;
+                break;
+        }
     }
 
-
+    destroyAllWindows();
     return 0;
 }
