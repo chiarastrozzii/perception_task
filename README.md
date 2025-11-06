@@ -46,7 +46,7 @@ target_link_libraries(PerceptionTask ${OpenCV_LIBS})
 
 ---
 
-## 🎛️ GUI Controls
+## 🕹️ GUI Controls
 
 When running the program, a **main menu overlay** appears in the center of the screen.  
 Use the following keyboard controls to toggle different modes, press once to active and another time to disactivate:
@@ -104,7 +104,7 @@ Use the following keyboard controls to toggle different modes, press once to act
 
 ---
 
-## 🧪 Example of the GUI Menu Overlay
+## 💻 Example of the GUI Menu Overlay
 
 ```text
 -----------------------------
