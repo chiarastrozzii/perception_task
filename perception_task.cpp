@@ -553,6 +553,7 @@ int main(){
             case 's':
                 show_frames = !show_frames;
                 show_menu = !show_menu;
+                break;
             case 'd':
                 show_detection = !show_detection;
                 show_menu = !show_menu; //when detection is off show the main menu
