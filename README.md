@@ -72,7 +72,7 @@ Use the following keyboard controls to toggle different modes, press once to act
 | **r** |  *Reset* | Resets all modes. |
 | **ESC** |  *Exit* | Closes all windows. |
 
-It's important to run the cone detection before the edge visualization, since the latter is based on the former.
+It's important to run the cone detection before the edge visualization, since the latter depends on the former.
 
 ---
 
