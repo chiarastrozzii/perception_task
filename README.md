@@ -9,9 +9,9 @@ This project simulates a **perception pipeline** for a Formula Student Driverles
 
 | Mode | Visualization |
 |------|----------------|
-| 🟦 **Cone Detection** | ![Cone Detection](documents/cone_detection.png) |
-| 🟨 **Edge Visualization** | ![Edge Detection](documents/edge_visualization.png) |
-| 🎚️ **Trackbar Mask Tuning** | ![Trackbar](documents/trackbar.gif) |
+| 🟦 **Cone Detection** | <img src="documents/cone_detection.png" width="300"> |
+| 🟨 **Edge Visualization** | <img src="documents/edge_visualization.png" width="300"> |
+| 🎚️ **Trackbar Mask Tuning** | <img src="documents/trackbar.gif" width="300"> |
 
 ---
 
