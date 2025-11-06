@@ -9,9 +9,9 @@ This project simulates a **perception pipeline** for a Formula Student Driverles
 
 | Mode | Visualization |
 |------|----------------|
-| 🟦 **Cone Detection** | ![Cone Detection](../documents/cone_detection.png) |
-| 🟨 **Edge Visualization** | ![Edge Detection](../documents/edge_visualization.png) |
-| 🎚️ **Trackbar Mask Tuning** | ![Trackbar](../documents/trackbar.gif) |
+| 🟦 **Cone Detection** | ![Cone Detection](documents/cone_detection.png) |
+| 🟨 **Edge Visualization** | ![Edge Detection](documents/edge_visualization.png) |
+| 🎚️ **Trackbar Mask Tuning** | ![Trackbar](documents/trackbar.gif) |
 
 ---
 
@@ -106,11 +106,10 @@ Use the following keyboard controls to toggle different modes, press once to act
 
 ## 🧪 Example of the GUI Menu Overlay
 
-*(You can screenshot your own menu overlay here)*  
-
 ```text
 -----------------------------
          CONTROLS
+[s] show frames
 [d] cones detection
 [e] racetrack edges
 [o] odometry
