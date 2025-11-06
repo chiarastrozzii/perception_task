@@ -18,7 +18,7 @@ int lower, upper; //used in the trackbar
 
 void onTrackbarChange(int , void*){} //updated globally
 
-void maskTrackBar(Mat frame1, Mat frame_HSV){
+void maskTrackBar(Mat& first_frame, Mat& frame_HSV){
     //to find the correct range of values for the mask use of a track bar:
     namedWindow("TrackBars", WINDOW_AUTOSIZE);
     
@@ -49,10 +49,10 @@ void maskTrackBar(Mat frame1, Mat frame_HSV){
         Scalar upper(hmax, smax, vmax);
         inRange(frame_HSV, lower, upper, trial_mask);
 
-        bitwise_and(frame1, frame1, result_mask, trial_mask);
+        bitwise_and(first_frame, first_frame, result_mask, trial_mask);
 
 
-        //imshow("racetrack 1", frame1);
+        //imshow("racetrack 1", first_frame);
         //imshow("racetrack HSV", frame_HSV);
         //imshow("mask", trial_mask);
         imshow("mask applied", result_mask);
@@ -86,7 +86,7 @@ void drawLegend(Mat& frame) {
     putText(frame, "Red cone", Point(startX + 25, startY + 2 * gap + 12), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
 }
 
-void redConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& red_centers){
+void redConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& red_centers){
     //after having found correct range with trackbar, hardcode the values
     Scalar lower_red(109, 0, 175);
     Scalar upper_red(179, 255, 255);
@@ -100,7 +100,7 @@ void redConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& red_centers){
     morphologyEx(mask_red, mask_red, MORPH_CLOSE, kernel);
     morphologyEx(mask_red, mask_red, MORPH_DILATE, kernel);
 
-    bitwise_and(frame1, frame1, result, mask_red); //result is a 3 channel color image
+    bitwise_and(first_frame, first_frame, result, mask_red); //result is a 3 channel color image
     //imshow("removing noise", result);
 
 
@@ -110,8 +110,8 @@ void redConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& red_centers){
 
     findContours(mask_red, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE); //expect a single channel image
 
-    //drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
-    //imshow("contours found", frame1);
+    //drawContours(first_frame, contours, -1, Scalar(0, 255, 0), 2);
+    //imshow("contours found", first_frame);
 
     vector <vector <Point> > approx(contours.size()); //needed for the approximated polygon
 
@@ -129,23 +129,23 @@ void redConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& red_centers){
         Rect box = boundingRect(approx[j]);
         Point center(box.x + box.width/2, box.y + box.height/2);
         red_centers.push_back(center);
-        rectangle(frame1, box, Scalar(0, 0, 255), 2);
+        rectangle(first_frame, box, Scalar(0, 0, 255), 2);
         
 
         int vertices = (int)approx[j].size();
 
          if (vertices >= 3 && vertices <= 6) {
-            putText(frame1, "RED CONE", Point(box.x, box.y - 10), //inferring the class!
+            putText(first_frame, "RED CONE", Point(box.x, box.y - 10), //inferring the class!
                     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255), 2);
         } else {
-            putText(frame1, "UNKNOWN", Point(box.x, box.y - 10),
+            putText(first_frame, "UNKNOWN", Point(box.x, box.y - 10),
                     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 2);
         }
 
     }
 
-    //drawLegend(frame1);
-    //imshow("red cones", frame1);
+    //drawLegend(first_frame);
+    //imshow("red cones", first_frame);
 
 
     /* char key = (char)waitKey(0); //need to uncomment in case of testing the single function
@@ -154,12 +154,12 @@ void redConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& red_centers){
     } */
 }
 
-void blueConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& blue_centers){
+void blueConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& blue_centers){
     Scalar lower_blue(50, 0, 70); //select a wider range to help detecting the further cones
     Scalar upper_blue(150, 255, 255);
 
     Rect roi( 0, 210, 400, 80);
-    //rectangle(frame1, roi, Scalar(255, 0, 0), 2);
+    //rectangle(first_frame, roi, Scalar(255, 0, 0), 2);
 
     Mat cropped_HSV = frame_HSV(roi); //crop the HSV so to compute the mask on the cropped part
 
@@ -184,10 +184,10 @@ void blueConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& blue_centers){
         }
     }
 
-    //drawContours(frame1, contours, -1, Scalar(0, 255, 0), 2);
-    //imshow("contours found", frame1);
+    //drawContours(first_frame, contours, -1, Scalar(0, 255, 0), 2);
+    //imshow("contours found", first_frame);
 
-    int imgHeight = frame1.rows;
+    int imgHeight = first_frame.rows;
     vector <Rect> boxes;
 
     for (const auto& contour : contours) {
@@ -198,14 +198,14 @@ void blueConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& blue_centers){
 
         // Filter weird shapes
         if (aspect < 0.3 || aspect > 3.0) continue;
-        rectangle(frame1, box, Scalar(255, 0, 0), 2);
+        rectangle(first_frame, box, Scalar(255, 0, 0), 2);
 
         Point center(box.x + box.width/2, box.y + box.height/2);
         blue_centers.push_back(center);
     }
 
-    //drawLegend(frame1);
-    //imshow("detected blue cones", frame1);
+    //drawLegend(first_frame);
+    //imshow("detected blue cones", first_frame);
 
 
     /* char key = (char)waitKey(0);
@@ -214,7 +214,7 @@ void blueConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& blue_centers){
     } */
 } 
 
-void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_centers){
+void yellowConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& yellow_centers){
     Scalar lower_yellow(0, 90, 190); //select a wider range to help detecting the further cones
     Scalar upper_yellow(40, 255, 255);
 
@@ -222,13 +222,13 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_cente
     Scalar upper_yellow2(90, 255, 255);
 
     Rect roi( 0, 200, 600, 100);
-    //rectangle(frame1, roi, Scalar(0, 255, 255), 2);
+    //rectangle(first_frame, roi, Scalar(0, 255, 255), 2);
 
     //create 2 rectangle region for 2 separate masks, so that i can use different kernels
     Rect further_cones(0, 200, 390, 40);
-    //rectangle(frame1, further_cones, Scalar(0, 255, 255), 2);
+    //rectangle(first_frame, further_cones, Scalar(0, 255, 255), 2);
     Rect right_cones(390, 200, 100, 100);
-    //rectangle(frame1, right_cones, Scalar(0, 255, 255), 2);
+    //rectangle(first_frame, right_cones, Scalar(0, 255, 255), 2);
 
 
     Mat cropped_HSV1 = frame_HSV(further_cones); //crop the HSV so to compute the mask on the cropped part
@@ -283,12 +283,12 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_cente
         Point center(box.x + box.width/2, box.y + box.height/2);
 
         if (aspect < 0.3|| aspect > 4) continue;
-        rectangle(frame1, box, Scalar(0, 255, 255), 2);
+        rectangle(first_frame, box, Scalar(0, 255, 255), 2);
         yellow_centers.push_back(center);
     }
 
-    //drawLegend(frame1);
-    //imshow("detected yellow cones", frame1);
+    //drawLegend(first_frame);
+    //imshow("detected yellow cones", first_frame);
 
 
     /* char key = (char)waitKey(0);
@@ -298,7 +298,7 @@ void yellowConesDetection(Mat frame1, Mat frame_HSV, vector<Point>& yellow_cente
 
 }
 
-void drawBlueEdge(Mat frame1, vector<Point>& blue_centers ){
+void drawBlueEdge(Mat& first_frame, vector<Point>& blue_centers ){
     vector<Point> sorted_cones = blue_centers;
     sort(sorted_cones.begin(), sorted_cones.end(), [](const Point&a, const Point& b){
         return a.x < b.x;
@@ -309,7 +309,7 @@ void drawBlueEdge(Mat frame1, vector<Point>& blue_centers ){
     vector<Point> rightCones(sorted_cones.begin() + mid_index -2, sorted_cones.end());
 
     for (size_t i=1; i<leftCones.size(); ++i){
-        line(frame1, leftCones[i-1], leftCones[i], Scalar(255,0,0), 2, LINE_AA);
+        line(first_frame, leftCones[i-1], leftCones[i], Scalar(255,0,0), 2, LINE_AA);
     }
 
     vector <Point> sorted_right = rightCones;
@@ -318,27 +318,27 @@ void drawBlueEdge(Mat frame1, vector<Point>& blue_centers ){
     });
 
     for (size_t i=1; i<sorted_right.size(); ++i){
-        line(frame1, sorted_right[i-1], sorted_right[i], Scalar(255, 0, 0), 2, LINE_AA);
+        line(first_frame, sorted_right[i-1], sorted_right[i], Scalar(255, 0, 0), 2, LINE_AA);
     }
 
-    line(frame1, leftCones.back(), sorted_right.front(), Scalar(255, 0, 0), 2, LINE_AA);
+    line(first_frame, leftCones.back(), sorted_right.front(), Scalar(255, 0, 0), 2, LINE_AA);
 }
 
-void drawYellowEdge(Mat frame1, vector<Point>& yellow_centers ){
+void drawYellowEdge(Mat& first_frame, vector<Point>& yellow_centers ){
     vector<Point> sorted_cones = yellow_centers;
     sort(sorted_cones.begin(), sorted_cones.end(), [](const Point&a, const Point& b){
         return a.x < b.x;
     });
 
     for(size_t i = 1; i<sorted_cones.size(); ++i){
-        line(frame1, sorted_cones[i-1], sorted_cones[i], Scalar(0,255,255), 2, LINE_AA );
+        line(first_frame, sorted_cones[i-1], sorted_cones[i], Scalar(0,255,255), 2, LINE_AA );
     }
    
 }
 
-void drawRedLine(Mat frame1, vector<Point>& red_centers){
+void drawRedLine(Mat& first_frame, vector<Point>& red_centers){
     for(size_t i=1; i<red_centers.size(); ++i){
-        line(frame1, red_centers[i-1], red_centers[i], Scalar(0, 0, 255), 2, LINE_AA);
+        line(first_frame, red_centers[i-1], red_centers[i], Scalar(0, 0, 255), 2, LINE_AA);
     }
 
      Point p1 = red_centers.front();
@@ -351,12 +351,12 @@ void drawRedLine(Mat frame1, vector<Point>& red_centers){
 
     Point textOrg(mid.x - textSize.width / 2, mid.y + textSize.height - 20); //position the text slightly below the line
 
-    putText(frame1, text, textOrg, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 0, 255), 2, LINE_AA);
+    putText(first_frame, text, textOrg, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 0, 255), 2, LINE_AA);
 }
 
 
 //---- LEVEL 5 functions -----
-Mat create_mask1(Mat first_frame){
+Mat create_mask1(Mat& first_frame){
     Mat mask_car1 = Mat::ones(first_frame.size(), CV_8UC1) * 255; // initially create a mask full of 1s (white), 8 bit unsigned since we're looking at an area of interest (greyscale)
     Rect middle_rect(190, 320, 280, 300);
     Rect left_tire1(30, 390, 160, 100);
@@ -369,7 +369,7 @@ Mat create_mask1(Mat first_frame){
     return mask_car1;
 }
 
-Mat create_mask2(Mat second_frame){
+Mat create_mask2(Mat& second_frame){
     Mat mask_car2 = Mat::ones(second_frame.size(), CV_8UC1) * 255;
     Rect middle_rect(190, 320, 280, 300);
     Rect left_tire2(30, 410, 160, 80);
@@ -382,64 +382,15 @@ Mat create_mask2(Mat second_frame){
     return mask_car2;
 }
 
-
-
-int main(){
-    string path_image1 = "../images/frame_1.png";
-    Mat frame1 = imread(path_image1); //matrix from opencv library where we store the image, read from the path given 
-
-    if (frame1.empty()){
-        cerr << "Could not load the image from path: " << path_image1 << endl;
-        return -1;
-    }
-
-    imshow("racetrack 1", frame1);
-
-    Mat frame_HSV;
-    cvtColor(frame1, frame_HSV, COLOR_BGR2HSV); //convert image to HSV
-    
-    //to create a trackbar to find the useful values for creating the different masks
-    //maskTrackBar(frame1, frame_HSV);
-
-    //to find center points of the cones, used for track trace
-    vector <Point> blue_centers;
-    vector <Point> yellow_centers;
-    vector <Point> red_centers;
-
-
-    //function to detect the red cones
-    redConesDetection(frame1, frame_HSV, red_centers);
-    //blue
-    blueConesDetection(frame1, frame_HSV, blue_centers);
-    //yellow
-    yellowConesDetection(frame1, frame_HSV, yellow_centers);
-
-    //draws a legend on top left corner for classification
-    drawLegend(frame1);
-    
-    imshow("detection", frame1);
-
-
-    //---- LEVEL 4 -----
-    drawBlueEdge(frame1, blue_centers);
-    drawYellowEdge(frame1, yellow_centers);
-    drawRedLine(frame1, red_centers);
-    imshow("race track edges", frame1 );
-
-
-    //---- LEVEL 5 ----
-
-    Mat first_frame = imread("../images/frame_1.png");
-    Mat second_frame= imread("../images/frame_2.png");
-
+void odometry(Mat &first_frame, Mat& second_frame){
     //create a binary mask to hide the car for both frames
     Mat mask_car1 = create_mask1(first_frame);
     Mat mask_car2 = create_mask2(second_frame);
 
-    Mat masked_frame1, masked_frame2;
-    first_frame.copyTo(masked_frame1, mask_car1);
+    Mat masked_first_frame, masked_frame2;
+    first_frame.copyTo(masked_first_frame, mask_car1);
     second_frame.copyTo(masked_frame2, mask_car2);
-    //imshow("masked car 1", masked_frame1);
+    //imshow("masked car 1", masked_first_frame);
     //imshow("masked car 2", masked_frame2);
 
 
@@ -496,6 +447,55 @@ int main(){
                 Scalar(255, 0, 0), Scalar(255, 255, 0), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
     imshow("matches", imgMatches);
+}
+
+
+
+int main(){
+    Mat first_frame = imread("../images/frame_1.png");
+    Mat second_frame= imread("../images/frame_2.png");
+
+    Mat display = first_frame.clone();
+
+    if (first_frame.empty()){
+        return -1;
+    }
+
+
+    Mat frame_HSV;
+    cvtColor(first_frame, frame_HSV, COLOR_BGR2HSV); //convert image to HSV
+    
+    //to create a trackbar to find the useful values for creating the different masks
+    //maskTrackBar(first_frame, frame_HSV);
+
+    //to find center points of the cones, used for track trace
+    vector <Point> blue_centers;
+    vector <Point> yellow_centers;
+    vector <Point> red_centers;
+
+
+    //function to detect the red cones
+    redConesDetection(first_frame, frame_HSV, red_centers);
+    //blue
+    blueConesDetection(first_frame, frame_HSV, blue_centers);
+    //yellow
+    yellowConesDetection(first_frame, frame_HSV, yellow_centers);
+
+    //draws a legend on top left corner for classification
+    drawLegend(first_frame);
+    
+    imshow("detection", first_frame);
+
+
+    //---- LEVEL 4 -----
+    drawBlueEdge(first_frame, blue_centers);
+    drawYellowEdge(first_frame, yellow_centers);
+    drawRedLine(first_frame, red_centers);
+    imshow("race track edges", first_frame );
+
+
+    //---- LEVEL 5 ----
+    odometry(display, second_frame);
 
 
     char key = (char)waitKey(0);
