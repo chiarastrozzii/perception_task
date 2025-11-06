@@ -410,20 +410,54 @@ Mat odometry(Mat &first_frame, Mat& second_frame){
 }
 
 void menu(Mat &first_frame){
-   putText(first_frame, "CONTROLS", Point(20, 40),
-            FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 0), 2);
-    putText(first_frame, "[d] cones detection", Point(20, 80),
-            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
-    putText(first_frame, "[e] racetrack edges", Point(20, 110),
-            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
-    putText(first_frame, "[o] odometry", Point(20, 140),
-            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
-    putText(first_frame, "[t] mask trackbar", Point(20, 170),
-            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
-    putText(first_frame, "[r] reset", Point(20, 200),
-            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
-    putText(first_frame, "[ESC] exit", Point(20, 230),
-            FONT_HERSHEY_SIMPLEX, 0.4, Scalar(0, 0, 255), 1);
+    vector<string> lines = {
+        "CONTROLS",
+        "[d] cones detection",
+        "[e] racetrack edges",
+        "[o] odometry",
+        "[t] mask trackbar",
+        "[r] reset",
+        "[ESC] exit"
+    };
+
+    int fontFace = FONT_HERSHEY_SIMPLEX;
+    double fontScale = 0.5;
+    int thickness = 1;
+    int lineSpacing = 30;
+
+    int baseline = 0;
+    int maxWidth = 0;
+    for (const auto &line : lines) {
+        Size textSize = getTextSize(line, fontFace, fontScale, thickness, &baseline);
+        if (textSize.width > maxWidth) maxWidth = textSize.width;
+    }
+
+    int totalHeight = lines.size() * lineSpacing + 20;
+
+    int rectX = (first_frame.cols - maxWidth) / 2 - 20;
+    int rectY = (first_frame.rows - totalHeight) / 2 - 10;
+    int rectWidth = maxWidth + 40;
+    int rectHeight = totalHeight + 20;
+
+
+    Mat overlay;
+    first_frame.copyTo(overlay);
+    rectangle(overlay, Rect(rectX, rectY, rectWidth, rectHeight), Scalar(30, 30, 30), FILLED);
+    addWeighted(overlay, 0.5, first_frame, 0.3, 0, first_frame);
+
+    // Draw the text lines
+    int y = rectY + 40;
+    for (size_t i = 0; i < lines.size(); ++i) {
+        Scalar color;
+        if (i == 0) color = Scalar(255, 255, 0);
+        else if (lines[i].find("ESC") != string::npos) color = Scalar(0, 0, 255);
+        else color = Scalar(255, 255, 255);
+
+        putText(first_frame, lines[i],
+                Point(rectX + 20, y),
+                fontFace, fontScale, color, thickness + (i == 0 ? 1 : 0));
+        y += lineSpacing;
+    }
 }
 
 
