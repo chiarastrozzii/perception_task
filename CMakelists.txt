@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project(Perceptron)
+project(PerceptionTask)
 
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(OpenCV REQUIRED)
 
-add_executable(perceptron perceptron.cpp)
+add_executable(PerceptionTask perception_task.cpp)
 
-target_link_libraries(perceptron ${OpenCV_LIBS})
+target_link_libraries(PerceptionTask ${OpenCV_LIBS})
