@@ -9,14 +9,13 @@ using namespace std;
 using namespace cv;
 
 
-//threshold values
 int hmin = 0, smin = 0, vmin = 0;
 int hmax = 179, smax = 255, vmax = 255;
-int lower, upper; //used in the trackbar
+int lower, upper;
 
 
 
-void onTrackbarChange(int , void*){} //updated globally
+void onTrackbarChange(int , void*){} 
 
 void drawLegend(Mat& frame) {
     int width = 200;
@@ -49,37 +48,36 @@ void redConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& red_cent
     inRange(frame_HSV, lower_red, upper_red, mask_red);
 
     //remove noise
-    Mat kernel = getStructuringElement(MORPH_RECT, Size(7,7)); //creates a rectangular kernel
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(7,7)); 
     morphologyEx(mask_red, mask_red, MORPH_OPEN, kernel);
     morphologyEx(mask_red, mask_red, MORPH_CLOSE, kernel);
     morphologyEx(mask_red, mask_red, MORPH_DILATE, kernel);
 
-    bitwise_and(first_frame, first_frame, result, mask_red); //result is a 3 channel color image
+    bitwise_and(first_frame, first_frame, result, mask_red);
     //imshow("removing noise", result);
 
 
-    //detect the geometry using contours
     vector <vector <Point> > contours;
     vector <Vec4i> hierarchy;
 
-    findContours(mask_red, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE); //expect a single channel image
+    findContours(mask_red, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
     //drawContours(first_frame, contours, -1, Scalar(0, 255, 0), 2);
     //imshow("contours found", first_frame);
 
-    vector <vector <Point> > approx(contours.size()); //needed for the approximated polygon
+    vector <vector <Point> > approx(contours.size()); 
 
     //approximate to triangle and detect cone
     for (size_t j=0; j< contours.size(); j++){
         double area = contourArea(contours[j]);
-        if (area < 500)  // filter out small noise
+        if (area < 500)
             continue;
 
         double peri = arcLength(contours[j], true); //true is for open
         
-        approxPolyDP(contours[j], approx[j], 0.02 * peri, true); // 0.02 is the epsilon and it's the approximation parameter, higher the epsilon less precise
+        approxPolyDP(contours[j], approx[j], 0.02 * peri, true);
 
-        // bounding box which is used for labelling
+        // bounding box
         Rect box = boundingRect(approx[j]);
         Point center(box.x + box.width/2, box.y + box.height/2);
         red_centers.push_back(center);
@@ -89,7 +87,7 @@ void redConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& red_cent
         int vertices = (int)approx[j].size();
 
          if (vertices >= 3 && vertices <= 6) {
-            putText(first_frame, "RED CONE", Point(box.x, box.y - 10), //inferring the class!
+            putText(first_frame, "RED CONE", Point(box.x, box.y - 10),
                     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255), 2);
         } else {
             putText(first_frame, "UNKNOWN", Point(box.x, box.y - 10),
@@ -100,13 +98,13 @@ void redConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& red_cent
 }
 
 void blueConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& blue_centers){
-    Scalar lower_blue(50, 0, 70); //select a wider range to help detecting the further cones
+    Scalar lower_blue(50, 0, 70);
     Scalar upper_blue(150, 255, 255);
 
     Rect roi( 0, 210, 400, 80);
     //rectangle(first_frame, roi, Scalar(255, 0, 0), 2);
 
-    Mat cropped_HSV = frame_HSV(roi); //crop the HSV so to compute the mask on the cropped part
+    Mat cropped_HSV = frame_HSV(roi);
 
     Mat mask_blue, result_blue;
     inRange(cropped_HSV, lower_blue, upper_blue, mask_blue);
@@ -141,7 +139,6 @@ void blueConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& blue_ce
         boxes.push_back(box);
         double aspect = (double)box.height / (double)box.width;
 
-        // Filter weird shapes
         if (aspect < 0.3 || aspect > 3.0) continue;
         rectangle(first_frame, box, Scalar(255, 0, 0), 2);
 
@@ -151,7 +148,7 @@ void blueConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& blue_ce
 } 
 
 void yellowConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& yellow_centers){
-    Scalar lower_yellow(0, 90, 190); //select a wider range to help detecting the further cones
+    Scalar lower_yellow(0, 90, 190); 
     Scalar upper_yellow(40, 255, 255);
 
     Scalar lower_yellow2(0, 90, 174);
@@ -160,14 +157,14 @@ void yellowConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& yello
     Rect roi( 0, 200, 600, 100);
     //rectangle(first_frame, roi, Scalar(0, 255, 255), 2);
 
-    //create 2 rectangle region for 2 separate masks, so that i can use different kernels
+    //created 2 rectangle region for 2 separate masks, so that i can use different kernels
     Rect further_cones(0, 200, 390, 40);
     //rectangle(first_frame, further_cones, Scalar(0, 255, 255), 2);
     Rect right_cones(390, 200, 100, 100);
     //rectangle(first_frame, right_cones, Scalar(0, 255, 255), 2);
 
 
-    Mat cropped_HSV1 = frame_HSV(further_cones); //crop the HSV so to compute the mask on the cropped part
+    Mat cropped_HSV1 = frame_HSV(further_cones);
     Mat cropped_HSV2 = frame_HSV(right_cones);
 
     Mat further_mask, right_mask;
@@ -206,7 +203,7 @@ void yellowConesDetection(Mat& first_frame, Mat& frame_HSV, vector<Point>& yello
         }
     }
 
-    //merge contours together
+    //merge contours 
     vector<vector<Point>> contours;
     contours.insert(contours.end(), further_contours.begin(), further_contours.end());
     contours.insert(contours.end(), right_contours.begin(), right_contours.end());
@@ -274,9 +271,9 @@ void drawRedLine(Mat& first_frame, vector<Point>& red_centers){
         line(first_frame, red_centers[i-1], red_centers[i], Scalar(0, 0, 255), 2, LINE_AA);
     }
 
-     Point p1 = red_centers.front();
+    Point p1 = red_centers.front();
     Point p2 = red_centers.back();
-    Point mid((p1.x + p2.x) / 2, (p1.y + p2.y) / 2); //middle point of the line
+    Point mid((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
 
     string text = "START";
     int baseline = 0;
@@ -288,7 +285,6 @@ void drawRedLine(Mat& first_frame, vector<Point>& red_centers){
 }
 
 
-//---- LEVEL 5 functions -----
 Mat create_mask1(Mat& first_frame){
     Mat mask_car1 = Mat::ones(first_frame.size(), CV_8UC1) * 255; // initially create a mask full of 1s (white), 8 bit unsigned since we're looking at an area of interest (greyscale)
     Rect middle_rect(190, 320, 280, 300);
@@ -316,7 +312,6 @@ Mat create_mask2(Mat& second_frame){
 }
 
 Mat odometry(Mat &first_frame, Mat& second_frame){
-    //create a binary mask to hide the car for both frames
     Mat mask_car1 = create_mask1(first_frame);
     Mat mask_car2 = create_mask2(second_frame);
 
@@ -327,39 +322,34 @@ Mat odometry(Mat &first_frame, Mat& second_frame){
     //imshow("masked car 2", masked_frame2);
 
 
-    //find the features and their descriptors
     Ptr<ORB> orb = ORB::create();
     vector<KeyPoint> keypoints1, keypoints2;
     Mat descriptor1, descriptor2; //local neighbours of each keypoint
 
-    orb-> detectAndCompute(first_frame, mask_car1, keypoints1, descriptor1); //returns a vector of keypoints and a matrix
+    orb-> detectAndCompute(first_frame, mask_car1, keypoints1, descriptor1);
     orb-> detectAndCompute(second_frame, mask_car2, keypoints2, descriptor2);
 
 
-    //match the features
     BFMatcher matcher(NORM_HAMMING, true); //using hamming distance to check, true means that all the matches found are symmetric, more reliable
     vector <DMatch> matches;
     matcher.match(descriptor1, descriptor2, matches); //single best matches based on the smallest distance
 
-    //extract the 2d points
+
     vector<Point2f> pt1, pt2; //points in image 1 with corresponding points (in second vector) in the second image
     for(auto &m: matches){
-        pt1.push_back(keypoints1[m.queryIdx].pt); //.pt stores the x and y coordinates of the points
+        pt1.push_back(keypoints1[m.queryIdx].pt);
         pt2.push_back(keypoints2[m.trainIdx].pt);
     }
 
-    //intrinsic matrix
     cv::Mat K = (cv::Mat_<double>(3, 3) << 
         387.3502807617188, 0,                   317.7719116210938,
         0,                 387.3502807617188,   242.4875946044922,
         0,                 0,                   1);   
     
     
-    //compute the Essential Matrix
     Mat inLierMask;
     Mat E = findEssentialMat(pt1, pt2, K, RANSAC, 0.999, 1.0, inLierMask); //the mask is an output, it tells how many matches were consistent
 
-    //how the camera actually moved (rotation matrix and translation vector)
     Mat R, t;
     recoverPose(E, pt1, pt2, K, R, t, inLierMask);
 
@@ -367,7 +357,6 @@ Mat odometry(Mat &first_frame, Mat& second_frame){
     //cout << "R" << R << endl;
     //cout << "t: " << t << endl;
 
-    // Draw inlier matches
     vector<DMatch> inLierMatches;
     for (size_t i = 0; i < matches.size(); i++) {
         if (inLierMask.at<uchar>(i)) {
@@ -419,7 +408,6 @@ void menu(Mat &first_frame){
     rectangle(overlay, Rect(rectX, rectY, rectWidth, rectHeight), Scalar(30, 30, 30), FILLED);
     addWeighted(overlay, 0.5, first_frame, 0.3, 0, first_frame);
 
-    // Draw the text lines
     int y = rectY + 40;
     for (size_t i = 0; i < lines.size(); ++i) {
         Scalar color;
@@ -448,19 +436,15 @@ int main(){
 
 
     Mat frame_HSV;
-    cvtColor(first_frame, frame_HSV, COLOR_BGR2HSV); //convert image to HSV
-    
-    //to create a trackbar to find the useful values for creating the different masks
-    //maskTrackBar(first_frame, frame_HSV);
+    cvtColor(first_frame, frame_HSV, COLOR_BGR2HSV);
 
-    //to find center points of the cones, used for track trace
     vector <Point> blue_centers;
     vector <Point> yellow_centers;
     vector <Point> red_centers;
 
     namedWindow("TrackBars", WINDOW_AUTOSIZE);
     
-    createTrackbar("Hue Min", "TrackBars", &hmin, 179, onTrackbarChange); //179 is the max value of the hue value
+    createTrackbar("Hue Min", "TrackBars", &hmin, 179, onTrackbarChange);
     createTrackbar("Hue Max", "TrackBars", &hmax, 179, onTrackbarChange);
     createTrackbar("Sat Min", "TrackBars", &smin, 255, onTrackbarChange);
     createTrackbar("Sat Max", "TrackBars", &smax, 255, onTrackbarChange);
@@ -492,14 +476,9 @@ int main(){
         }
 
         if (show_detection){
-            //function to detect the red cones
             redConesDetection(display, frame_HSV, red_centers);
-            //blue
             blueConesDetection(display, frame_HSV, blue_centers);
-            //yellow
             yellowConesDetection(display, frame_HSV, yellow_centers);
-
-            //draws a legend on top left corner for classification
             drawLegend(display);
         }
 
@@ -556,7 +535,7 @@ int main(){
                 break;
             case 'd':
                 show_detection = !show_detection;
-                show_menu = !show_menu; //when detection is off show the main menu
+                show_menu = !show_menu;
                 break;
             case 'e':
                 show_edges = !show_edges;

@@ -9,9 +9,9 @@ This project simulates a **perception pipeline** for a Formula Student Driverles
 
 | Mode | Visualization |
 |------|----------------|
-| 🟦 **Cone Detection** | <img src="documents/cone_detection.png" width="400"> |
-| 🟨 **Edge Visualization** | <img src="documents/edge_visualization.png" width="400"> |
-| 🎚️ **Trackbar Mask Tuning** | <img src="documents/trackbar.gif" width="400"> |
+| 🟦 **Cone Detection** | <img src="documents_readme/cone_detection.png" width="400"> |
+| 🟨 **Edge Visualization** | <img src="documents_readme/edge_visualization.png" width="400"> |
+| 🎚️ **Trackbar Mask Tuning** | <img src="documents_readme/trackbar.gif" width="400"> |
 
 ---
 
@@ -134,5 +134,7 @@ It's important to run the cone detection before the edge visualization, since th
 
 ---
 
-
+## Project Report
+Here's the link to the report on the project.
+📄 -[Project Report (PDF)](./documents_readme/Report-Perception-Task.pdf)
 
