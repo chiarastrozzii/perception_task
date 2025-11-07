@@ -76,7 +76,7 @@ It's important to run the cone detection before the edge visualization, since th
 
 ---
 
-## 🧩 Pipeline Architecture
+## 🏰 Pipeline Architecture
 
 ###  **Level 1 — Load Data**
 - Loads both images
