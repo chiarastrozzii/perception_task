@@ -135,6 +135,6 @@ It's important to run the cone detection before the edge visualization, since th
 ---
 
 ## Project Report
-Here's the link to the report on the project.
+Here's the link to the report.
 📄 -[Project Report (PDF)](./documents_readme/Report-Perception-Task.pdf)
 
